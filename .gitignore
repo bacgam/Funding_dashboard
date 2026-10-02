@@ -1,0 +1,10 @@
+data/
+node_modules/
+screenshots/
+research/*.js
+research/*.html
+dist/
+.env
+.env.*
+!.env.example
+*.log

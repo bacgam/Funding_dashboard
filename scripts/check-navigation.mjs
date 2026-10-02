@@ -1,0 +1,67 @@
+import assert from 'node:assert/strict';
+import { chromium } from '@playwright/test';
+
+const browser = await chromium.launch({ channel: 'msedge', headless: true });
+try {
+  const page = await browser.newPage({ viewport: { width: 1536, height: 1060 } });
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('http://127.0.0.1:4180');
+  await page.locator('.card').first().waitFor();
+  await page.locator('[data-group="dashboard"]').click();
+  assert.equal(await page.locator('#nav-dashboard').isVisible(), false);
+  await page.reload();
+  assert.equal(await page.locator('[data-group="dashboard"]').getAttribute('aria-expanded'), 'false');
+  await page.locator('[data-group="dashboard"]').click();
+  await page.locator('[data-mode="gap"]').click();
+  assert.equal(await page.locator('#current-page').textContent(), '선물 가격 갭');
+  assert.equal(await page.locator('#periods').isVisible(), false);
+  assert.match(page.url(), /#gap$/);
+  await page.locator('[data-mode="funding"]').click();
+  await page.goBack();
+  await page.waitForFunction(() => document.querySelector('#current-page').textContent === '선물 가격 갭');
+  await page.goForward();
+  await page.waitForFunction(() => document.querySelector('#current-page').textContent === '실시간 펀딩비');
+  await page.getByRole('searchbox').fill('BTC');
+  await page.getByRole('button', { name: 'BTC 즐겨찾기', exact: true }).click();
+  await page.locator('[data-page="favorites"]').click();
+  assert.equal(await page.locator('#favorites-only').isChecked(), true);
+  assert.equal(await page.locator('#rows tr[data-detail]').count(), 1);
+  await page.locator('[data-mode="funding"]').click();
+  await page.screenshot({ path: 'screenshots/sidebar-desktop.png' });
+  for (const width of [1250, 1180, 1024, 768, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `Page overflow at ${width}px`);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.equal(await page.locator('#sidebar').evaluate(el => el.inert), true);
+  await page.locator('#menu-toggle').click();
+  await page.waitForFunction(() => Math.abs(document.querySelector('#sidebar').getBoundingClientRect().left) < 1);
+  assert.equal(await page.locator('.app-content').evaluate(el => el.inert), true);
+  await page.screenshot({ path: 'screenshots/sidebar-mobile.png' });
+  await page.locator('#menu-close').focus();
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Shift+Tab');
+  assert.equal(await page.locator('#menu-close').evaluate(el => el === document.activeElement), true);
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('#menu-toggle').getAttribute('aria-expanded'), 'false');
+  assert.equal(await page.locator('#menu-toggle').evaluate(el => el === document.activeElement), true);
+  await page.locator('#menu-toggle').click();
+  await page.locator('[data-mode="gap"]').click();
+  assert.equal(await page.locator('#sidebar').evaluate(el => el.inert), true);
+  assert.equal(await page.locator('.app-content').evaluate(el => el.inert), false);
+  assert.equal(await page.locator('#page-title').evaluate(el => el === document.activeElement), true);
+  await page.locator('#menu-toggle').click();
+  await page.locator('#sidebar-guide').click();
+  assert.equal(await page.locator('#guide').evaluate(el => el.open), true);
+  await page.getByRole('button', { name: '계산 기준 닫기' }).click();
+  await page.locator('#menu-toggle').click();
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  assert.equal(await page.locator('.app-content').evaluate(el => el.inert), false);
+  assert.equal(await page.locator('#sidebar').evaluate(el => el.inert), false);
+  assert.equal(await page.locator('#sidebar-backdrop').isVisible(), false);
+  await page.reload();
+  assert.equal(await page.locator('#current-page').textContent(), '선물 가격 갭');
+  assert.deepEqual(errors, []);
+  console.log('Navigation checks passed: groups, persistence, routes, back/forward, favorites, responsive layout, mobile drawer, keyboard, guide, resize, deep link.');
+} finally { await browser.close(); }

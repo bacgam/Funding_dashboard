@@ -1,0 +1,29 @@
+// Reviewed identities from assets/markets/sources.json and the Hyperliquid adapter.
+// Classify the underlying asset, not the exchange or an RWA project's token narrative.
+const rwaSymbols = new Set(`
+  AAOI AAPL ALAB AMAT AMC AMD AMZN ANTHROPIC ARM ASML ASTS AVGO BABA BB
+  BBX BE BMNR BNC BOT BRKB BX BZ CAMBRICON CAT CBRS CIEN
+  CIFR CL CLSK COHR COIN COPPER COST CRCL CRDO CRM CRWD CRWV CSCO
+  CXMT DELL DIS DKNG DRAM EBAY EURUSD EWJ EWT EWY EWZ FWDI
+  GBPUSD GEV GIGADEV GLW GME GOOGL GPRO HD HIMS HOOD HPE HYUNDAI
+  IBIDEN IBM IGV INNOLIGHT INTC IONQ IREN IWM JPM KIOXIA KLAC KORU
+  KSTR KWEB LITE LLY LRCX LUNR MAGS MELI META MINIMAX MRNA MRVL MSFT
+  MSTR MU NATGAS NAVER NBIS NET NFLX NOK NOW NVDA NVO OPENAI
+  ORCL PAXG PAYP PLTR QBTS QCOM QNTX QQQ RDDT RGTI RIVN RKLB RTX SGOV SHAZ SHEIN
+  SKHX SKHY SLV SMCI SMH SMSN SNDK SNOW SOFI SOFTBANK SONY SOXL SOXS
+  SPCX SPY STRC STXX TENCENT TER TMF TSLA TSM TTWO TXN TZA
+  UBER UKOILP UNITREE URNM US100S US500 US500S USAR USDJPY USO USOILP UVXY VISA
+  VST WDC WEN WMT WTI WULF XAG XAGS XAU XAUS XAUT XBI XIAOMI
+  XLE XPD XPT ZHIPU ZM
+`.trim().split(/\s+/));
+// Contract-specific identities avoid mixing QNT (crypto) with xyz:QNT (equity).
+const xyzRwaSymbols = new Set('BIRD BOT CBRS COPPER DRAM EUR GBP JP225 JPY KR200 LYTE NCLD PALLADIUM PLATINUM PURRDAT QNT SHAZ SHEIN SKHY SP500 SPCX XYZ100 GOLD SILVER BRENTOIL CL NATGAS'.split(' '));
+export function classifyMarket(row) {
+  const symbol = row.symbol ?? '';
+  if (rwaSymbols.has(symbol)) return 'rwa';
+  if (symbol.startsWith('xyz:')) {
+    const base = symbol.slice(4);
+    if (rwaSymbols.has(base) || xyzRwaSymbols.has(base)) return 'rwa';
+  }
+  return 'crypto';
+}
